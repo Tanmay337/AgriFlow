@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>🌱 AgriFlow™️ // Autonomous Precision Irrigation Controller</title>
+
+  <!-- Browser Tab Favicon (SVG Seedling Emoji) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+
+  <meta name="description"
+    content="AgriFlow precision irrigation controller using Open-Meteo weather, FAO-56 ET0, crop stage, soil moisture telemetry and reservoir optimization.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="app-background" id="app-background" aria-hidden="true">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <div class="app-container">
+
+    <!-- HEADER -->
+    <header class="app-header">
+
+      <div class="brand-group">
+
+        <div class="brand-icon-wrapper" aria-label="AgriFlow Seedling Logo">
+          <span class="brand-emoji">🌱</span>
+        </div>
+
+        <div>
+
+          <div class="brand-title-row">
+
+            <h1 class="brand-title">
+              Agri<span>Flow</span>
+            </h1>
+
+            <span class="badge">
+              MVP // FAO-56 + API
+            </span>
+
+          </div>
+
+          <p class="brand-subtitle">
+            Autonomous 4-Zone Precision Irrigation • Weather Gating • Crop Stage • Reservoir Optimization
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="header-actions">
+
+        <div id="api-status" class="status-indicator-pill">
+          <span class="pulse-dot"></span>
+          <span>WEATHER: AUTOMATED TELEMETRY</span>
+        </div>
+
+        <button id="btn-sound-toggle" class="icon-btn" title="Toggle Audio">
+          🔊
+        </button>
+
+        <button id="btn-run" class="btn primary">
+          ▶️ Execute Irrigation Cycle
+        </button>
+
+      </div>
+
+    </header>
+
+
+    <!-- KPI HUD -->
+
+    <section class="kpi-grid">
+
+      <!-- 1. CUSTOM MONITORED AREA KPI INPUT -->
+      <div class="kpi-card kpi-card-interactive">
+        <span class="kpi-label">Monitored Area</span>
+        <div class="kpi-input-row">
+          <input type="number" id="input-total-area" class="kpi-input-field" min="4" max="5000" step="1" value="100" title="Type custom acreage">
+          <span class="kpi-unit">ha</span>
+        </div>
+        <small id="kpi-quadrant-subtext">4 × 25.0 ha zones</small>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-label">ET₀ / FAO-56</span>
+        <strong id="kpi-et0">—</strong>
+        <small>Reference evapotranspiration</small>
+      </div>
+
+      <!-- 2. DEMAND CARD -->
+      <div class="kpi-card">
+        <span class="kpi-label">Demand</span>
+        <strong id="kpi-demand">—</strong>
+        <small>Autonomous soil-weather model</small>
+      </div>
+
+      <!-- 3. CUSTOM RESERVOIR WATER AVAILABLE KPI INPUT -->
+      <div class="kpi-card kpi-card-interactive">
+        <span class="kpi-label">Reservoir</span>
+        <div class="kpi-input-row">
+          <input type="number" id="input-kpi-reservoir" class="kpi-input-field kpi-input-large" min="0" max="100000000" step="100000" value="15000000" title="Type custom available liters">
+          <span class="kpi-unit">L</span>
+        </div>
+        <small id="kpi-coverage">Coverage —</small>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-label">Dispatch</span>
+        <strong id="kpi-dispatch">—</strong>
+        <small id="kpi-dispatch-reason">—</small>
+      </div>
+
+    </section>
+
+
+    <main class="main-grid">
+
+      <!-- FIELD -->
+
+      <section class="panel field-panel">
+
+        <div class="panel-head">
+
+          <div>
+            <h2>4-Zone Field Controller</h2>
+
+            <p id="field-topology-desc">
+              Autonomous telemetry • Soil physics &amp; location-driven moisture dynamics.
+            </p>
+          </div>
+
+          <div class="head-actions">
+
+            <button id="btn-fail-all" class="btn small outline">
+              Simulate Sensor Failure
+            </button>
+
+            <button id="btn-evap" class="btn small outline">
+              Advance 1 Day (Solar Loss)
+            </button>
+
+          </div>
+
+        </div>
+
+        <div id="zones" class="zones-grid"></div>
+
+      </section>
+
+
+      <!-- RIGHT SIDE -->
+
+      <aside class="side-column">
+
+
+        <!-- WEATHER INTELLIGENCE -->
+
+        <section class="panel">
+
+          <div class="panel-head">
+
+            <div>
+
+              <h2>Weather Intelligence</h2>
+
+              <p>
+                Live Open-Meteo forecast with manual calibration sliders.
+              </p>
+
+            </div>
+
+            <span id="weather-badge" class="badge success">
+              LIVE / TELEMETRY
+            </span>
+
+          </div>
+
+
+          <!-- LOCATION INPUT -->
+
+          <div class="location-row">
+
+            <input
+              id="location-input"
+              class="input"
+              value="Jaipur, India"
+              placeholder="Search city or postal code"
+            >
+
+            <button id="btn-search" class="btn primary small">
+              Search
+            </button>
+
+            <button id="btn-location" class="btn outline small">
+              Use GPS
+            </button>
+
+          </div>
+
+          <div id="location-results" class="location-results"></div>
+
+
+          <!-- AUTOMATED WEATHER VALUES -->
+
+          <div class="weather-stats">
+
+            <div>
+              <span>Rain next 24h</span>
+              <strong id="w-rain">—</strong>
+            </div>
+
+            <div>
+              <span>Temperature</span>
+              <strong id="w-temp">—</strong>
+            </div>
+
+            <div>
+              <span>Humidity</span>
+              <strong id="w-rh">—</strong>
+            </div>
+
+            <div>
+              <span>Wind</span>
+              <strong id="w-wind">—</strong>
+            </div>
+
+            <div>
+              <span>ET₀ FAO-56</span>
+              <strong id="w-et0">—</strong>
+            </div>
+
+            <div>
+              <span>VPD</span>
+              <strong id="w-vpd">—</strong>
+            </div>
+
+          </div>
+
+          <!-- MANUAL WEATHER OVERRIDE SLIDERS -->
+          <div class="manual-weather-box">
+            <span class="slider-section-title">Manual Atmospheric Sliders</span>
+            
+            <div class="manual-control-row">
+              <label for="slider-rain">Rain Forecast: <b id="val-rain">0 mm</b></label>
+              <input type="range" id="slider-rain" min="0" max="40" step="0.5" value="0">
+            </div>
+
+            <div class="manual-control-row">
+              <label for="slider-temp">Ambient Temperature: <b id="val-temp">30 °C</b></label>
+              <input type="range" id="slider-temp" min="5" max="50" step="1" value="30">
+            </div>
+
+            <div class="manual-control-row">
+              <label for="slider-humidity">Relative Humidity: <b id="val-humidity">45 %</b></label>
+              <input type="range" id="slider-humidity" min="10" max="100" step="1" value="45">
+            </div>
+
+            <div class="manual-control-row">
+              <label for="slider-wind">Wind Speed: <b id="val-wind">12 km/h</b></label>
+              <input type="range" id="slider-wind" min="0" max="60" step="1" value="12">
+            </div>
+          </div>
+
+          <!-- DECISION BANNER -->
+
+          <div class="decision" id="decision">
+
+            <div class="decision-title">
+
+              <div>
+
+                <span class="decision-label">
+                  DISPATCH DECISION
+                </span>
+
+                <strong id="decision-title">
+                  Loading weather…
+                </strong>
+
+              </div>
+
+              <span id="decision-badge" class="badge">
+                —
+              </span>
+
+            </div>
+
+            <p id="decision-text">
+              Fetching automated forecast.
+            </p>
+
+          </div>
+
+        </section>
+
+
+        <!-- RESERVOIR -->
+
+        <section class="panel">
+
+          <div class="panel-head">
+
+            <div>
+
+              <h2>Water Reservoir & Optimization</h2>
+
+              <p>
+                Prioritizes vulnerable zones when supply is constrained.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <label class="range-label">
+
+            Available reservoir
+
+            <!-- Direct editable input for water available -->
+            <div class="reservoir-input-wrap">
+              <input type="number" id="res-val-input" class="studio-input-reservoir" min="0" max="100000000" step="100000" value="15000000" title="Type custom available liters">
+              <strong>L</strong>
+            </div>
+
+            <input
+              id="res-slider"
+              type="range"
+              min="0"
+              max="20000000"
+              step="100000"
+              value="15000000"
+            >
+
+          </label>
+
+
+          <div class="chips">
+
+            <button data-res="3000000">
+              3M shortage
+            </button>
+
+            <button data-res="8000000">
+              8M moderate
+            </button>
+
+            <button data-res="15000000">
+              15M balanced
+            </button>
+
+            <button data-res="20000000">
+              20M full
+            </button>
+
+          </div>
+
+
+          <div class="select-row">
+
+            <label>
+              Allocation
+
+              <select id="strategy">
+
+                <option value="smart">
+                  Smart vulnerability
+                </option>
+
+                <option value="proportional">
+                  Proportional
+                </option>
+
+                <option value="triage">
+                  Critical triage
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <label>
+              Controller Mode
+
+              <select id="controller-mode">
+
+                <option value="precision">
+                  Precision controller
+                </option>
+
+                <option value="fixed">
+                  Fixed schedule
+                </option>
+
+              </select>
+
+            </label>
+
+          </div>
+
+
+          <div class="table-wrap">
+
+            <table>
+
+              <thead>
+
+                <tr>
+                  <th>Zone</th>
+                  <th>ETc</th>
+                  <th>Demand</th>
+                  <th>Allocated</th>
+                  <th>Coverage</th>
+                </tr>
+
+              </thead>
+
+              <tbody id="allocation-body"></tbody>
+
+            </table>
+
+          </div>
+
+        </section>
+
+      </aside>
+
+
+      <!-- COMPARISON -->
+
+      <section class="panel full">
+
+        <div class="panel-head">
+
+          <div>
+
+            <h2>
+              Precision vs Fixed Schedule
+            </h2>
+
+            <p>
+              Same field and weather conditions, different irrigation strategy.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div class="compare-grid">
+
+          <div class="compare-card">
+
+            <span>
+              Precision controller
+            </span>
+
+            <strong id="dynamic-water">
+              —
+            </strong>
+
+            <small id="dynamic-events">
+              —
+            </small>
+
+          </div>
+
+
+          <div class="compare-card">
+
+            <span>
+              Fixed schedule
+            </span>
+
+            <strong id="fixed-water">
+              —
+            </strong>
+
+            <small id="fixed-events">
+              —
+            </small>
+
+          </div>
+
+
+          <div class="compare-card">
+
+            <span>
+              Water saved
+            </span>
+
+            <strong id="saved-water">
+              —
+            </strong>
+
+            <small id="saved-pct">
+              —
+            </small>
+
+          </div>
+
+
+          <div class="compare-card">
+
+            <span>
+              Stress exposure
+            </span>
+
+            <strong id="stress-result">
+              —
+            </strong>
+
+            <small>
+              Zones below stress threshold
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <div id="comparison-chart" class="chart"></div>
+
+      </section>
+
+
+      <!-- FORECAST -->
+
+      <section class="panel full">
+
+        <div class="panel-head">
+
+          <div>
+
+            <h2>
+              ET₀ / Weather Forecast
+            </h2>
+
+            <p>
+              Open-Meteo forecast + FAO-56 reference evapotranspiration.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div id="forecast-chart" class="chart"></div>
+
+      </section>
+
+
+      <!-- SENSOR TELEMETRY -->
+
+      <section class="panel full">
+
+        <div class="panel-head">
+
+          <div>
+
+            <h2>
+              Hydraulic Telemetry & Sensor Reliability
+            </h2>
+
+            <p>
+              Failed sensors use the last valid reading and modeled ET loss.
+            </p>
+
+          </div>
+
+          <button id="btn-clear" class="btn small outline">
+            Clear logs
+          </button>
+
+        </div>
+
+
+        <div id="sensor-health" class="sensor-health"></div>
+
+        <div id="logs" class="logs">
+
+          <div>
+            [SYSTEM] AgriFlow controller initialized.
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+
+    <!-- FOOTER -->
+
+    <footer class="footer">
+
+      <div>
+        <b>🌱 AgriFlow™️</b>
+        — Autonomous Precision Irrigation Controller
+      </div>
+
+
+      <div class="formula-grid">
+
+        <span>
+          ΔM = max(0, Mtarget − Mcurrent)
+        </span>
+
+        <span>
+          ETc = ET₀ × Kc × Ks
+        </span>
+
+        <span>
+          Ks = water-stress coefficient
+        </span>
+
+        <span>
+          Allocation = Reservoir × Weight / ΣWeight
+        </span>
+
+      </div>
+
+
+      <small>
+        Autonomous telemetry: moisture values update automatically from soil characteristics and live Open-Meteo forecast data.
+      </small>
+
+    </footer>
+
+  </div>
+
+
+  <script type="module" src="/src/main.tsx"></script>
+
+</body>
+
+</html>
