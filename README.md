@@ -1,24 +1,30 @@
 # AgriFlow
 
-AgriFlow is a precision irrigation dashboard demo. It models four farm zones and combines soil moisture and weather conditions to estimate irrigation timing and water allocation.
+AgriFlow is a browser-based precision irrigation dashboard demo. It models a farm as four equal field quadrants and combines simulated soil-moisture and weather conditions to help determine irrigation timing and water allocation.
+
+## Features
+
+- **Four-quadrant field view:** Visualizes the farm as four equal zones and presents zone-level conditions.
+- **Soil-aware irrigation planning:** Uses soil profiles and moisture values to estimate water needs.
+- **Weather-aware dispatch decisions:** Considers forecast precipitation and humidity when recommending whether to irrigate now or wait.
+- **Water and reservoir optimization:** Displays water deficit, allocation, and irrigation dispatch information.
+- **Interactive simulation:** Run an irrigation cycle and randomize simulated inputs to explore different conditions.
+- **Decision telemetry:** Shows key metrics, system status, and explanations for irrigation recommendations.
+
+## Built with
+
+- HTML5
+- CSS
+- Vanilla JavaScript (ES6+)
 
 ## Run locally
 
-This project uses Vite, React, TypeScript, Tailwind CSS, and a shadcn/ui-compatible component layout.
+This is a static front-end demo. Download or clone the repository and open `index.html` in a modern browser. If your browser restricts local scripts, serve the folder with any basic static HTTP server and visit the local address it provides.
 
-```bash
-npm install
-npm run dev
-```
+## Project files
 
-Create a production build with `npm run build`, then preview it with `npm run preview`.
+- `index.html` — dashboard structure and interface
+- `style.css` — dashboard styling
+- `app.jss` — JavaScript application logic
 
-## UI structure
-
-- `src/components/ui/` — reusable interface components, including the animated gradient backdrop.
-- `src/lib/utils.ts` — shared `cn()` utility for shadcn/ui-style components.
-- `src/index.css` — Tailwind CSS and shadcn theme tokens.
-- `style.css` — AgriFlow dashboard styling.
-- `app.js` — irrigation dashboard logic.
-
-The background uses WebGL2 when available and falls back to a static green gradient.
+> **Note:** The current `index.html` references `app.js`, while the repository file is named `app.jss`. For the interactive controls to load, make those names match (for example, rename `app.jss` to `app.js` or update the script reference).
