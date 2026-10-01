@@ -16,6 +16,7 @@ AgriFlow is a browser-based precision irrigation dashboard demo. It models a far
 - HTML5
 - CSS
 - Vanilla JavaScript (ES6+)
+- TypeScript
 
 ## Run locally
 
